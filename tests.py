@@ -43,8 +43,13 @@ class PartyTestsDatabase(unittest.TestCase):
     def setUp(self):
         """Stuff to do before every test."""
 
-        self.client = app.test_client()
         app.config['TESTING'] = True
+        app.config['SECRET_KEY'] = 'key'
+        self.client = app.test_client()
+
+        with self.client as c:
+            with c.session_transaction() as sess:
+                sess['RSVP'] = False
 
         # Connect to test database (uncomment when testing database)
         connect_to_db(app, "postgresql:///testdb")
@@ -60,9 +65,21 @@ class PartyTestsDatabase(unittest.TestCase):
         db.session.close()
         db.drop_all()
 
-    def test_games(self):
+    def test_games_before_rsvp(self):
+        """Test that non-RSVP'd user cannot see games list."""
+
+        result = self.client.get('/games', follow_redirects=True)
+        self.assertEquals(200, result.status_code)
+        self.assertIn("Please RSVP", result.data)
+        self.assertNotIn('Apples to Apples', result.data)
+
+    def test_games_after_rsvp(self):
         """Test that game info appears on the site."""
 
+        self.client.post("/rsvp",
+                         data={"name": "Jane",
+                         "email": "jane@jane.com"},
+                         follow_redirects=True)
         result = self.client.get('/games')
         self.assertEquals(200, result.status_code)
         self.assertIn('Apples to Apples', result.data)

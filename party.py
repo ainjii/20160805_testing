@@ -32,8 +32,11 @@ def rsvp():
 def games():
     """Get all games from database and return the list to user."""
 
-    games = Game.query.all()
-    return render_template("games.html", games=games)
+    if session['RSVP'] and session['RSVP'] is True:
+        games = Game.query.all()
+        return render_template("games.html", games=games)
+    else:
+        return redirect('/')
 
 
 if __name__ == "__main__":
